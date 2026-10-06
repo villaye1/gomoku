@@ -1,0 +1,1674 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="color-scheme" content="light" />
+<meta name="theme-color" content="#f3eadc" />
+<title>五子棋</title>
+<style>
+  :root {
+    --paper: #f3eadc;
+    --paper-2: #faf6ee;
+    --ink: #2a2118;
+    --muted: #7d6d5c;
+    --line: rgba(42, 33, 24, 0.1);
+    --cinnabar: #b23a2f;
+    --cinnabar-ink: #f8efe6;
+    --wood-shadow: rgba(70, 42, 18, 0.16);
+    --radius: 14px;
+    --font: "Songti SC", "STSong", "PMingLiU", "Source Han Serif SC", "Noto Serif CJK SC",
+      "PingFang SC", "Hiragino Sans GB", "Noto Sans SC", "Microsoft YaHei",
+      "WenQuanYi Zen Hei", sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    font-family: var(--font);
+    color: var(--ink);
+    background:
+      radial-gradient(900px 280px at 50% -40px, rgba(255, 252, 245, 0.9), transparent 60%),
+      var(--paper);
+    line-height: 1.5;
+  }
+
+  .app {
+    width: min(760px, 100%);
+    margin: 0 auto;
+    min-height: 100%;
+    padding: max(16px, env(safe-area-inset-top)) 14px max(20px, env(safe-area-inset-bottom));
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  header {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 8px 16px;
+  }
+  .brand { display: flex; align-items: center; gap: 12px; }
+  .seal {
+    width: 44px;
+    height: 44px;
+    display: grid;
+    place-items: center;
+    color: var(--cinnabar);
+    border: 2px solid var(--cinnabar);
+    box-shadow: inset 0 0 0 1px rgba(178, 58, 47, 0.35);
+    border-radius: 3px;
+    font-size: 22px;
+    line-height: 1;
+    transform: rotate(-8deg);
+    background: rgba(178, 58, 47, 0.04);
+  }
+  h1 {
+    margin: 0;
+    font-size: 28px;
+    font-weight: 600;
+    letter-spacing: 0.2em;
+    line-height: 1.15;
+  }
+  h1::after {
+    content: "";
+    display: block;
+    width: 2.4em;
+    height: 2px;
+    margin-top: 6px;
+    background: var(--cinnabar);
+  }
+  .sub {
+    margin: 6px 0 0;
+    color: var(--muted);
+    font-size: 13px;
+    letter-spacing: 0.08em;
+  }
+  .record {
+    margin: 0;
+    text-align: right;
+    color: var(--muted);
+    font-size: 13px;
+    letter-spacing: 0.06em;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .status {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    background: rgba(255, 252, 247, 0.72);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+  }
+  .status div {
+    padding: 10px 6px 11px;
+    text-align: center;
+  }
+  .status div + div { box-shadow: inset 1px 0 0 var(--line); }
+  .status .k {
+    display: block;
+    color: var(--muted);
+    font-size: 12px;
+    letter-spacing: 0.14em;
+  }
+  .status .v {
+    display: block;
+    margin-top: 2px;
+    font-size: 18px;
+    font-variant-numeric: tabular-nums;
+    min-height: 28px;
+  }
+  .think { color: var(--cinnabar); letter-spacing: 0.12em; }
+  .pip {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    margin-right: 6px;
+    border-radius: 50%;
+    vertical-align: -1px;
+  }
+  .pip.black {
+    background: radial-gradient(circle at 35% 32%, #6a6a6a, #141414 72%);
+    box-shadow: 0 1px 1px rgba(0, 0, 0, 0.35);
+  }
+  .pip.white {
+    background: radial-gradient(circle at 35% 32%, #fff, #d5d0c6 78%);
+    box-shadow: inset 0 0 0 1px rgba(42, 33, 24, 0.12), 0 1px 1px rgba(0, 0, 0, 0.12);
+  }
+
+  .board-wrap {
+    width: min(100%, 640px, max(220px, calc(100dvh - 390px)));
+    margin: 2px auto;
+    align-self: center;
+  }
+  canvas {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 1;
+    display: block;
+    border-radius: 10px;
+    box-shadow: 0 16px 40px var(--wood-shadow), 0 1px 0 rgba(255, 255, 255, 0.45) inset;
+    touch-action: none;
+    cursor: pointer;
+    background: #d7b172;
+  }
+
+  .panel {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 12px;
+    background: rgba(255, 252, 247, 0.55);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+  }
+  .field {
+    display: grid;
+    grid-template-columns: 52px 1fr;
+    align-items: center;
+    gap: 8px;
+  }
+  .field > span {
+    color: var(--muted);
+    font-size: 13px;
+    letter-spacing: 0.12em;
+  }
+  .seg {
+    display: flex;
+    padding: 3px;
+    background: rgba(42, 33, 24, 0.05);
+    border-radius: 999px;
+  }
+  .seg button {
+    flex: 1;
+    min-height: 40px;
+    border: 0;
+    background: transparent;
+    color: var(--ink);
+    border-radius: 999px;
+    font: inherit;
+    font-size: 15px;
+    letter-spacing: 0.06em;
+  }
+  .seg button.on {
+    background: var(--ink);
+    color: var(--paper-2);
+  }
+
+  .renju {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 44px;
+    color: var(--muted);
+    font-size: 14px;
+  }
+  .renju input { position: absolute; opacity: 0; pointer-events: none; }
+  .track {
+    width: 40px;
+    height: 24px;
+    border-radius: 999px;
+    background: rgba(42, 33, 24, 0.12);
+    position: relative;
+    flex: none;
+  }
+  .track i {
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+  }
+  .renju em { font-style: normal; font-size: 12px; letter-spacing: 0.08em; }
+
+  .actions { display: flex; flex-wrap: wrap; gap: 8px; }
+  .actions button {
+    flex: 1 1 calc(50% - 8px);
+    min-height: 44px;
+    border-radius: 12px;
+    border: 1px solid rgba(42, 33, 24, 0.16);
+    background: var(--paper-2);
+    color: var(--ink);
+    font: inherit;
+    font-size: 15px;
+    letter-spacing: 0.08em;
+  }
+  .actions button.primary {
+    background: var(--ink);
+    color: var(--paper-2);
+    border-color: var(--ink);
+  }
+  button:disabled { opacity: 0.38; cursor: default; }
+  button:not(:disabled) { cursor: pointer; }
+  button:not(:disabled):active { transform: translateY(1px); }
+  button:focus-visible { outline: 2px solid var(--cinnabar); outline-offset: 2px; }
+  button, canvas { -webkit-tap-highlight-color: transparent; }
+
+  .overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(42, 33, 24, 0.42);
+    display: grid;
+    place-items: center;
+    padding: 24px;
+    z-index: 5;
+  }
+  .overlay[hidden] { display: none; }
+  .dialog {
+    width: min(100%, 320px);
+    background: var(--paper-2);
+    color: var(--ink);
+    border-radius: 18px;
+    padding: 26px 22px 18px;
+    text-align: center;
+    box-shadow: 0 24px 60px rgba(40, 24, 10, 0.28);
+    user-select: text;
+  }
+  .dialog .eyebrow {
+    margin: 0;
+    color: var(--cinnabar);
+    letter-spacing: 0.22em;
+    font-size: 13px;
+  }
+  .dialog h2 {
+    margin: 8px 0 6px;
+    font-size: 28px;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+  }
+  .dialog p { margin: 0; color: var(--muted); }
+  .dialog .actions { margin-top: 18px; }
+
+  @media (min-width: 720px) {
+    .actions button { flex: 1 1 0; }
+    .app { padding-top: 28px; }
+    h1 { font-size: 34px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    button:not(:disabled):active { transform: none; }
+  }
+</style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <div class="brand">
+        <div class="seal" aria-hidden="true">棋</div>
+        <div>
+          <h1>五子棋</h1>
+          <p class="sub">十五路 · 先连五子者胜</p>
+        </div>
+      </div>
+      <p class="record" id="record">胜 0 · 负 0 · 和 0</p>
+    </header>
+
+    <section class="status" aria-live="polite">
+      <div>
+        <span class="k">当前</span>
+        <span class="v" id="turnLabel">黑方</span>
+      </div>
+      <div>
+        <span class="k">手数</span>
+        <span class="v" id="moveCount">0</span>
+      </div>
+      <div>
+        <span class="k">用时</span>
+        <span class="v" id="clock">00:00</span>
+      </div>
+    </section>
+
+    <div class="board-wrap">
+      <canvas id="board" width="640" height="640" aria-label="五子棋棋盘，点击交叉点落子"></canvas>
+    </div>
+
+    <section class="panel">
+      <div class="field">
+        <span>对局</span>
+        <div class="seg" id="modeSeg">
+          <button type="button" data-value="pve" class="on">人机</button>
+          <button type="button" data-value="pvp">双人</button>
+        </div>
+      </div>
+      <div class="field" id="sideField">
+        <span>我方</span>
+        <div class="seg" id="sideSeg">
+          <button type="button" data-value="1" class="on">执黑</button>
+          <button type="button" data-value="2">执白</button>
+        </div>
+      </div>
+      <div class="field">
+        <span>难度</span>
+        <div class="seg" id="diffSeg">
+          <button type="button" data-value="easy">简单</button>
+          <button type="button" data-value="medium" class="on">中等</button>
+          <button type="button" data-value="hard">困难</button>
+        </div>
+      </div>
+      <label class="renju" title="禁手规则将在后续版本加入，当前不生效">
+        <input type="checkbox" disabled />
+        <span class="track" aria-hidden="true"><i></i></span>
+        <span>禁手规则</span>
+        <em>稍后加入</em>
+      </label>
+      <div class="actions">
+        <button type="button" id="btnUndo">悔棋</button>
+        <button type="button" id="btnRestart" class="primary">重新开始</button>
+        <button type="button" id="btnHint">提示</button>
+        <button type="button" id="btnSound" aria-pressed="true">音效开</button>
+      </div>
+    </section>
+  </div>
+
+  <div class="overlay" id="overlay" hidden>
+    <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="overTitle">
+      <p class="eyebrow" id="overEyebrow">五连</p>
+      <h2 id="overTitle">黑方获胜</h2>
+      <p id="overDetail"></p>
+      <div class="actions">
+        <button type="button" id="btnReview">查看棋盘</button>
+        <button type="button" id="btnAgain" class="primary">再来一局</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+/**
+ * 五子棋单文件实现。
+ * 模块划分：棋盘与规则、棋型评分、搜索 AI、画布渲染、合成音效、对局界面。
+ * 禁手只保留开关，不改变落子合法性。
+ */
+function installGomoku(api) {
+  "use strict";
+  var SIZE = 15;
+  var EMPTY = 0;
+  var BLACK = 1;
+  var WHITE = 2;
+  var FIVE = 10000000;
+  var LIVE4 = 1000000;
+  var RUSH4 = 100000;
+  var LIVE3 = 10000;
+  var SLEEP3 = 1000;
+  var LIVE2 = 200;
+  var SLEEP2 = 20;
+  var WIN_MOVE = 50000000;
+  var BLOCK_MOVE = 40000000;
+  var WIN = 1000000000000;
+  var INF = WIN * 10;
+  var DIRS = [[1, 0], [0, 1], [1, 1], [1, -1]];
+
+  function opponent(color) {
+    return color === BLACK ? WHITE : BLACK;
+  }
+
+  function createBoard() {
+    var board = [];
+    for (var y = 0; y < SIZE; y++) board.push(new Array(SIZE).fill(EMPTY));
+    return board;
+  }
+
+  function inb(x, y) {
+    return x >= 0 && y >= 0 && x < SIZE && y < SIZE;
+  }
+
+  /** 从刚落下的棋子向四个方向延伸，凑满五子则返回要高亮的五颗（长连取含最后一手的五颗）。 */
+  function findWinLine(board, x, y) {
+    var color = board[y][x];
+    if (!color) return null;
+    var uniq = [];
+    var seen = {};
+    var found = false;
+    for (var d = 0; d < 4; d++) {
+      var dx = DIRS[d][0];
+      var dy = DIRS[d][1];
+      var cells = [[x, y]];
+      for (var s = -1; s <= 1; s += 2) {
+        for (var i = 1; i < SIZE; i++) {
+          var nx = x + dx * s * i;
+          var ny = y + dy * s * i;
+          if (!inb(nx, ny) || board[ny][nx] !== color) break;
+          cells.push([nx, ny]);
+        }
+      }
+      if (cells.length < 5) continue;
+      found = true;
+      cells.sort(function (a, b) {
+        return (a[0] * dx + a[1] * dy) - (b[0] * dx + b[1] * dy);
+      });
+      var idx = 0;
+      for (var c = 0; c < cells.length; c++) {
+        if (cells[c][0] === x && cells[c][1] === y) { idx = c; break; }
+      }
+      var start = idx - 2;
+      if (start < 0) start = 0;
+      if (start + 5 > cells.length) start = cells.length - 5;
+      for (var k = start; k < start + 5; k++) {
+        var key = cells[k][0] + "," + cells[k][1];
+        if (!seen[key]) {
+          seen[key] = 1;
+          uniq.push(cells[k]);
+        }
+      }
+    }
+    return found ? uniq : null;
+  }
+
+  /** 不改棋盘：假设在空位落下 color，是否立刻连成五子。 */
+  function wouldWin(board, x, y, color) {
+    if (board[y][x] !== EMPTY) return false;
+    for (var d = 0; d < 4; d++) {
+      var dx = DIRS[d][0];
+      var dy = DIRS[d][1];
+      var n = 1;
+      for (var s = -1; s <= 1; s += 2) {
+        for (var i = 1; i < 5; i++) {
+          var cx = x + dx * s * i;
+          var cy = y + dy * s * i;
+          if (!inb(cx, cy) || board[cy][cx] !== color) break;
+          n++;
+        }
+      }
+      if (n >= 5) return true;
+    }
+    return false;
+  }
+
+  function isFull(board) {
+    for (var y = 0; y < SIZE; y++) {
+      for (var x = 0; x < SIZE; x++) if (board[y][x] === EMPTY) return false;
+    }
+    return true;
+  }
+
+  /**
+   * 某一方向的棋型分。中心按“即将落下的己方子”计算，不写入棋盘。
+   * quick 为真时跳过跳活三，供叶子评估减负。
+   */
+  function scoreDir(board, x, y, dx, dy, color, quick) {
+    function at(k) {
+      if (k === 0) return 1;
+      var cx = x + dx * k;
+      var cy = y + dy * k;
+      if (!inb(cx, cy)) return 2;
+      var v = board[cy][cx];
+      if (v === EMPTY) return 0;
+      return v === color ? 1 : 2;
+    }
+    var left = 0;
+    while (left < 5 && at(-(left + 1)) === 1) left++;
+    var right = 0;
+    while (right < 5 && at(right + 1) === 1) right++;
+    var len = left + right + 1;
+    var open = (at(-(left + 1)) === 0 ? 1 : 0) + (at(right + 1) === 0 ? 1 : 0);
+    var best = 0;
+    if (len >= 5) best = FIVE;
+    else if (len === 4) best = open === 2 ? LIVE4 : open === 1 ? RUSH4 : 0;
+    else if (len === 3) best = open === 2 ? LIVE3 : open === 1 ? SLEEP3 : 0;
+    else if (len === 2) best = open === 2 ? LIVE2 : open === 1 ? SLEEP2 : 0;
+
+    if (best < RUSH4) {
+      for (var s = -4; s <= 0; s++) {
+        var selves = 0;
+        var empty = 0;
+        var blocked = false;
+        for (var k = s; k <= s + 4; k++) {
+          var t = at(k);
+          if (t === 1) selves++;
+          else if (t === 0) empty++;
+          else { blocked = true; break; }
+        }
+        if (blocked) continue;
+        if (selves === 5) { best = FIVE; break; }
+        if (selves === 4 && empty === 1) { best = RUSH4; break; }
+      }
+    }
+    if (!quick && best < LIVE3) {
+      for (var s2 = -5; s2 <= 0; s2++) {
+        var str = "";
+        for (var k2 = s2; k2 <= s2 + 5; k2++) {
+          var t2 = at(k2);
+          str += t2 === 1 ? "1" : t2 === 0 ? "0" : "2";
+        }
+        if (str === "011010" || str === "010110") { best = LIVE3; break; }
+      }
+    }
+    return best;
+  }
+
+  function shapeScore(board, x, y, color, quick) {
+    var total = 0;
+    var rush = 0;
+    var live3 = 0;
+    var hasFive = false;
+    for (var d = 0; d < 4; d++) {
+      var s = scoreDir(board, x, y, DIRS[d][0], DIRS[d][1], color, quick);
+      total += s;
+      if (s >= FIVE) hasFive = true;
+      else if (s >= RUSH4 && s < LIVE4) rush++;
+      else if (s >= LIVE3 && s < RUSH4) live3++;
+    }
+    if (hasFive) return FIVE;
+    if (rush >= 2) total += 900000;
+    else if (rush >= 1 && live3 >= 1) total += 800000;
+    else if (live3 >= 2) total += 700000;
+    if (total > 30000000) total = 30000000;
+    return total;
+  }
+
+  function evaluateMove(board, x, y, color, defenseWeight) {
+    if (board[y][x] !== EMPTY) return -INF;
+    if (wouldWin(board, x, y, color)) return WIN_MOVE;
+    var mine = shapeScore(board, x, y, color, false);
+    if (wouldWin(board, x, y, opponent(color))) return BLOCK_MOVE + Math.min(mine, RUSH4);
+    var opp = shapeScore(board, x, y, opponent(color), false);
+    return mine + opp * defenseWeight;
+  }
+
+  /** 已有棋子周围两格内的空点；空盘下天元。 */
+  function candidates(board) {
+    var mark = new Uint8Array(SIZE * SIZE);
+    var list = [];
+    var stones = 0;
+    for (var y = 0; y < SIZE; y++) {
+      for (var x = 0; x < SIZE; x++) {
+        if (board[y][x] === EMPTY) continue;
+        stones++;
+        for (var dy = -2; dy <= 2; dy++) {
+          for (var dx = -2; dx <= 2; dx++) {
+            var nx = x + dx;
+            var ny = y + dy;
+            if (!inb(nx, ny) || board[ny][nx] !== EMPTY) continue;
+            var id = ny * SIZE + nx;
+            if (mark[id]) continue;
+            mark[id] = 1;
+            list.push({ x: nx, y: ny });
+          }
+        }
+      }
+    }
+    if (!stones) list.push({ x: 7, y: 7 });
+    return list;
+  }
+
+  function closeness(x, y) {
+    var dx = x - 7;
+    var dy = y - 7;
+    return -(dx * dx + dy * dy);
+  }
+
+  function orderMoves(board, color, defenseWeight) {
+    var list = candidates(board);
+    var scored = [];
+    for (var i = 0; i < list.length; i++) {
+      var m = list[i];
+      scored.push({ x: m.x, y: m.y, s: evaluateMove(board, m.x, m.y, color, defenseWeight) });
+    }
+    scored.sort(function (a, b) {
+      if (b.s !== a.s) return b.s - a.s;
+      var c = closeness(b.x, b.y) - closeness(a.x, a.y);
+      if (c) return c;
+      if (a.x !== b.x) return a.x - b.x;
+      return a.y - b.y;
+    });
+    return scored;
+  }
+
+  function evaluateBoard(board, aiColor) {
+    var score = 0;
+    for (var y = 0; y < SIZE; y++) {
+      for (var x = 0; x < SIZE; x++) {
+        var c = board[y][x];
+        if (!c) continue;
+        var s = 0;
+        for (var d = 0; d < 4; d++) s += scoreDir(board, x, y, DIRS[d][0], DIRS[d][1], c, true);
+        if (c === aiColor) score += s;
+        else score -= s * 1.08;
+      }
+    }
+    return score;
+  }
+
+  var lastSearch = { nodes: 0, depth: 0, aborted: false };
+  var searchStat = { nodes: 0, aborted: false };
+
+  function beamOf(moves, depthLeft, isRoot) {
+    var width = isRoot ? (depthLeft >= 4 ? 12 : 16) : (depthLeft >= 4 ? 8 : depthLeft === 3 ? 9 : depthLeft === 2 ? 11 : 13);
+    if (moves.length <= width) return moves;
+    var cut = width;
+    while (cut < moves.length && cut < width + 6 && moves[cut].s >= LIVE4) cut++;
+    return moves.slice(0, cut);
+  }
+
+  function ab(board, lastX, lastY, depth, alpha, beta, toMove, aiColor, deadline, defense) {
+    searchStat.nodes++;
+    if (lastX >= 0 && findWinLine(board, lastX, lastY)) {
+      var aiWon = board[lastY][lastX] === aiColor;
+      return aiWon ? WIN + depth : -(WIN + depth);
+    }
+    if (performance.now() > deadline || searchStat.nodes > 70000) {
+      searchStat.aborted = true;
+      return 0;
+    }
+    if (depth === 0) return evaluateBoard(board, aiColor);
+    var moves = beamOf(orderMoves(board, toMove, defense), depth, false);
+    if (!moves.length) return 0;
+    if (moves[0].s >= WIN_MOVE) return toMove === aiColor ? WIN + depth : -(WIN + depth);
+    var next = opponent(toMove);
+    if (toMove === aiColor) {
+      var best = -INF;
+      for (var i = 0; i < moves.length; i++) {
+        if (performance.now() > deadline) { searchStat.aborted = true; break; }
+        var m = moves[i];
+        board[m.y][m.x] = toMove;
+        var val = ab(board, m.x, m.y, depth - 1, alpha, beta, next, aiColor, deadline, defense);
+        board[m.y][m.x] = EMPTY;
+        if (searchStat.aborted) break;
+        if (val > best) best = val;
+        if (best > alpha) alpha = best;
+        if (alpha >= beta) break;
+      }
+      return best;
+    }
+    var worst = INF;
+    for (var j = 0; j < moves.length; j++) {
+      if (performance.now() > deadline) { searchStat.aborted = true; break; }
+      var n = moves[j];
+      board[n.y][n.x] = toMove;
+      var val2 = ab(board, n.x, n.y, depth - 1, alpha, beta, next, aiColor, deadline, defense);
+      board[n.y][n.x] = EMPTY;
+      if (searchStat.aborted) break;
+      if (val2 < worst) worst = val2;
+      if (worst < beta) beta = worst;
+      if (alpha >= beta) break;
+    }
+    return worst;
+  }
+
+  function searchRoot(board, color, depth, deadline, defense) {
+    searchStat.aborted = false;
+    var moves = beamOf(orderMoves(board, color, defense), depth, true);
+    var bestVal = -INF;
+    var bestMove = null;
+    var opp = opponent(color);
+    for (var i = 0; i < moves.length; i++) {
+      if (performance.now() > deadline) { searchStat.aborted = true; break; }
+      var m = moves[i];
+      board[m.y][m.x] = color;
+      var val = findWinLine(board, m.x, m.y)
+        ? WIN + depth
+        : ab(board, m.x, m.y, depth - 1, -INF, INF, opp, color, deadline, defense);
+      board[m.y][m.x] = EMPTY;
+      if (searchStat.aborted) break;
+      if (val > bestVal) {
+        bestVal = val;
+        bestMove = { x: m.x, y: m.y };
+      }
+    }
+    return { complete: !searchStat.aborted && !!bestMove, move: bestMove };
+  }
+
+  /**
+   * level: easy 贪心加少量随机；medium 提高防守、不随机；hard 迭代加深的 Alpha-Beta。
+   * 任何难度都不会选择已有棋子的交叉点。能成五时直接下，不让随机性放走过。
+   */
+  function chooseMove(board, color, level, deadline) {
+    var defense = level === "easy" ? 0.82 : level === "medium" ? 1.55 : 1.15;
+    var ordered = orderMoves(board, color, defense);
+    lastSearch = { nodes: 0, depth: level === "hard" ? 0 : 1, aborted: false };
+    if (!ordered.length) return null;
+    if (ordered[0].s >= WIN_MOVE || level !== "hard") {
+      if (ordered[0].s >= WIN_MOVE) return { x: ordered[0].x, y: ordered[0].y };
+      if (level === "easy" && ordered[0].s < RUSH4) {
+        var top = ordered[0].s;
+        var slack = Math.max(12, Math.abs(top) * 0.2);
+        var pool = [];
+        for (var i = 0; i < ordered.length && pool.length < 4; i++) {
+          if (top - ordered[i].s <= slack) pool.push(ordered[i]);
+        }
+        var pick = pool[Math.floor(Math.random() * pool.length)];
+        return { x: pick.x, y: pick.y };
+      }
+      return { x: ordered[0].x, y: ordered[0].y };
+    }
+    var best = { x: ordered[0].x, y: ordered[0].y };
+    var reached = 0;
+    var nodes = 0;
+    for (var d = 2; d <= 4; d++) {
+      if (performance.now() > deadline - 40) break;
+      searchStat.nodes = 0;
+      searchStat.aborted = false;
+      var result = searchRoot(board, color, d, deadline, defense);
+      nodes += searchStat.nodes;
+      if (!result.complete) break;
+      if (result.move) {
+        best = result.move;
+        reached = d;
+      }
+    }
+    lastSearch = { nodes: nodes, depth: reached, aborted: false };
+    if (!inb(best.x, best.y) || board[best.y][best.x] !== EMPTY) {
+      for (var k = 0; k < ordered.length; k++) {
+        if (board[ordered[k].y][ordered[k].x] === EMPTY) {
+          return { x: ordered[k].x, y: ordered[k].y };
+        }
+      }
+      return null;
+    }
+    return best;
+  }
+
+  /** 人机一次撤回双方各一手；若电脑还没应着，只撤回玩家这一手。双人只撤回一手。 */
+  function undoMoves(history, mode, humanColor) {
+    var h = history.slice();
+    if (!h.length) return h;
+    if (mode !== "pve") {
+      h.pop();
+      return h;
+    }
+    var ai = opponent(humanColor);
+    if (h[h.length - 1].color === ai) h.pop();
+    if (h.length && h[h.length - 1].color === humanColor) h.pop();
+    return h;
+  }
+
+  function boardFromHistory(history) {
+    var b = createBoard();
+    for (var i = 0; i < history.length; i++) b[history[i].y][history[i].x] = history[i].color;
+    return b;
+  }
+
+  function selfTest() {
+    var failures = [];
+    function assert(cond, msg) { if (!cond) failures.push(msg); }
+
+    var b = createBoard();
+    for (var x = 0; x < 5; x++) b[0][x] = BLACK;
+    var line = findWinLine(b, 0, 0);
+    assert(line && line.length === 5, "顶边横五");
+    line = findWinLine(b, 4, 0);
+    assert(line && line.length === 5 && line.some(function (c) { return c[0] === 4 && c[1] === 0; }), "横五含最后一手");
+
+    b = createBoard();
+    for (var y = 10; y < 15; y++) b[y][14] = WHITE;
+    line = findWinLine(b, 14, 14);
+    assert(line && line.length === 5, "右边竖五");
+
+    b = createBoard();
+    for (var i = 0; i < 5; i++) b[i][i] = BLACK;
+    line = findWinLine(b, 0, 0);
+    assert(line && line.length === 5, "主对角");
+
+    b = createBoard();
+    for (var j = 0; j < 5; j++) b[j][4 - j] = BLACK;
+    line = findWinLine(b, 4, 0);
+    assert(line && line.length === 5, "反对角");
+
+    b = createBoard();
+    for (var t = 0; t < 5; t++) b[14 - t][t] = BLACK;
+    line = findWinLine(b, 0, 14);
+    assert(line && line.length === 5, "底角斜五");
+
+    b = createBoard();
+    for (var u = 0; u < 4; u++) b[7][u] = BLACK;
+    assert(!findWinLine(b, 3, 7), "四子不成胜");
+
+    b = createBoard();
+    for (var v = 0; v < 6; v++) b[8][v] = BLACK;
+    line = findWinLine(b, 5, 8);
+    assert(line && line.length === 5 && line.some(function (c) { return c[0] === 5 && c[1] === 8; }), "长连高亮五子");
+
+    b = createBoard();
+    assert(!isFull(b), "空盘非满");
+    for (var yy = 0; yy < 15; yy++) for (var xx = 0; xx < 15; xx++) b[yy][xx] = ((xx + yy) % 2) + 1;
+    assert(isFull(b), "满盘");
+
+    b = createBoard();
+    for (var p = 0; p < 4; p++) b[7][p] = BLACK;
+    var winMove = chooseMove(b, BLACK, "medium", Infinity);
+    assert(winMove && winMove.x === 4 && winMove.y === 7, "中等直接成五 " + JSON.stringify(winMove));
+    var block = chooseMove(b, WHITE, "medium", Infinity);
+    assert(block && block.x === 4 && block.y === 7, "中等堵住冲四 " + JSON.stringify(block));
+
+    b = createBoard();
+    for (var q = 0; q < 4; q++) b[0][q] = BLACK;
+    for (var r = 0; r < 4; r++) b[1][r] = WHITE;
+    var prefer = chooseMove(b, BLACK, "hard", performance.now() + 800);
+    assert(prefer && prefer.x === 4 && prefer.y === 0 && b[0][4] === EMPTY, "困难优先自己成五 " + JSON.stringify(prefer));
+
+    b = createBoard();
+    b[5][2] = BLACK; b[5][3] = BLACK; b[5][4] = BLACK; b[5][6] = BLACK;
+    var jump = chooseMove(b, WHITE, "medium", Infinity);
+    assert(jump && jump.x === 5 && jump.y === 5, "堵住跳四 " + JSON.stringify(jump));
+
+    b = createBoard();
+    b[7][7] = BLACK; b[7][8] = BLACK; b[7][9] = BLACK;
+    var ext = chooseMove(b, BLACK, "medium", Infinity);
+    assert(ext && ext.y === 7 && (ext.x === 6 || ext.x === 10), "活三延伸 " + JSON.stringify(ext));
+    var stop3 = chooseMove(b, WHITE, "medium", Infinity);
+    assert(stop3 && stop3.y === 7 && (stop3.x === 6 || stop3.x === 10), "防活三 " + JSON.stringify(stop3));
+
+    b = createBoard();
+    b[7][7] = BLACK;
+    var snap = JSON.stringify(b);
+    for (var ntry = 0; ntry < 24; ntry++) {
+      var easy = chooseMove(b, WHITE, "easy", Infinity);
+      assert(easy && b[easy.y][easy.x] === EMPTY, "简单不叠子");
+    }
+    var hard = chooseMove(b, WHITE, "hard", performance.now() + 1500);
+    assert(hard && b[hard.y][hard.x] === EMPTY, "困难不叠子 " + JSON.stringify(hard));
+    assert(JSON.stringify(b) === snap, "搜索不改原棋盘");
+    assert(lastSearch.depth >= 3, "困难搜索深度 " + lastSearch.depth + " 节点 " + lastSearch.nodes);
+
+    var hist = [
+      { x: 7, y: 7, color: BLACK },
+      { x: 7, y: 8, color: WHITE },
+      { x: 8, y: 7, color: BLACK }
+    ];
+    var u1 = undoMoves(hist, "pve", BLACK);
+    assert(u1.length === 2 && u1[1].color === WHITE, "电脑未应时只悔己方");
+    var u2 = undoMoves(hist.slice(0, 2), "pve", BLACK);
+    assert(u2.length === 0, "人机悔双方各一手");
+    var u3 = undoMoves(hist.slice(0, 2), "pvp", BLACK);
+    assert(u3.length === 1 && u3[0].color === BLACK, "双人只悔一手");
+    var u4 = undoMoves([{ x: 7, y: 7, color: BLACK }], "pve", WHITE);
+    assert(u4.length === 0, "执白悔掉电脑开局");
+    var restored = boardFromHistory(u3);
+    assert(restored[7][7] === BLACK && restored[7][8] === EMPTY, "悔棋后棋盘与最后一手");
+
+    return failures;
+  }
+
+  api.BLACK = BLACK;
+  api.WHITE = WHITE;
+  api.createBoard = createBoard;
+  api.findWinLine = findWinLine;
+  api.isFull = isFull;
+  api.chooseMove = chooseMove;
+  api.undoMoves = undoMoves;
+  api.boardFromHistory = boardFromHistory;
+  api.selfTest = selfTest;
+  api.getLastSearch = function () { return lastSearch; };
+}
+
+installGomoku(window);
+
+/* ========== 对局界面、渲染、音效 ========== */
+(function () {
+  "use strict";
+  var BLACK = window.BLACK;
+  var WHITE = window.WHITE;
+  var EMPTY = 0;
+  var canvas = document.getElementById("board");
+  var ctx = canvas.getContext("2d");
+  var turnEl = document.getElementById("turnLabel");
+  var moveEl = document.getElementById("moveCount");
+  var clockEl = document.getElementById("clock");
+  var recordEl = document.getElementById("record");
+  var overlay = document.getElementById("overlay");
+  var sideField = document.getElementById("sideField");
+  var btnUndo = document.getElementById("btnUndo");
+  var btnHint = document.getElementById("btnHint");
+  var btnSound = document.getElementById("btnSound");
+
+  var mode = "pve";
+  var humanColor = BLACK;
+  var difficulty = "medium";
+  var board = window.createBoard();
+  var history = [];
+  var phase = "play";
+  var resultColor = 0;
+  var winKeys = {};
+  var hover = null;
+  var hintCell = null;
+  var hintOn = false;
+  var hintTimer = 0;
+  var job = 0;
+  var worker = null;
+  var watchdog = 0;
+  var pendingHint = null;
+  var soundOn = true;
+  var audioCtx = null;
+  var lastRecord = null;
+  var stats = { pve: { win: 0, lose: 0, draw: 0 }, pvp: { black: 0, white: 0, draw: 0 } };
+  var geom = { pad: 40, cell: 40, size: 640 };
+  var wood = null;
+  var woodSize = 0;
+  var anim = null;
+  var raf = 0;
+  var reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var clockStart = 0;
+  var clockAccum = 0;
+  var clockRun = false;
+  var clockShown = -1;
+  var pausedByHide = false;
+
+  function currentColor() {
+    return history.length % 2 === 0 ? BLACK : WHITE;
+  }
+
+  function copyBoard() {
+    return board.map(function (row) { return row.slice(); });
+  }
+
+  function fmt(sec) {
+    var s = Math.max(0, sec | 0);
+    var m = (s / 60) | 0;
+    var r = s % 60;
+    return (m < 10 ? "0" : "") + m + ":" + (r < 10 ? "0" : "") + r;
+  }
+
+  function clockSec() {
+    var ms = clockAccum;
+    if (clockRun) ms += performance.now() - clockStart;
+    return Math.floor(ms / 1000);
+  }
+
+  function startClock() {
+    if (clockRun || phase === "over") return;
+    clockStart = performance.now();
+    clockRun = true;
+  }
+
+  function pauseClock() {
+    if (!clockRun) return;
+    clockAccum += performance.now() - clockStart;
+    clockRun = false;
+  }
+
+  function resetClock() {
+    clockAccum = 0;
+    clockRun = false;
+    pausedByHide = false;
+    clockShown = -1;
+    clockEl.textContent = "00:00";
+  }
+
+  function recordText() {
+    if (mode === "pve") {
+      var s = stats.pve;
+      return "胜 " + s.win + " · 负 " + s.lose + " · 和 " + s.draw;
+    }
+    var p = stats.pvp;
+    return "黑胜 " + p.black + " · 白胜 " + p.white + " · 和 " + p.draw;
+  }
+
+  function pip(color) {
+    return '<i class="pip ' + (color === BLACK ? "black" : "white") + '" aria-hidden="true"></i>';
+  }
+
+  function updateHUD() {
+    if (phase === "think") turnEl.innerHTML = '<span class="think">思考中…</span>';
+    else if (phase === "over" && resultColor === 0) turnEl.textContent = "和棋";
+    else if (phase === "over") turnEl.innerHTML = pip(resultColor) + (resultColor === BLACK ? "黑方胜" : "白方胜");
+    else if (mode === "pve") {
+      var mine = currentColor() === humanColor;
+      var who = currentColor() === BLACK ? "黑" : "白";
+      turnEl.innerHTML = pip(currentColor()) + (mine ? "轮到你 · " + who : "电脑 · " + who);
+    } else {
+      turnEl.innerHTML = pip(currentColor()) + (currentColor() === BLACK ? "轮到黑方" : "轮到白方");
+    }
+    moveEl.textContent = String(history.length);
+    recordEl.textContent = recordText();
+    sideField.hidden = mode !== "pve";
+    btnUndo.disabled = history.length === 0;
+    btnHint.disabled = phase !== "play" || (mode === "pve" && currentColor() !== humanColor);
+  }
+
+  function pushRecord(kind) {
+    lastRecord = kind;
+    var bag = mode === "pve" ? stats.pve : stats.pvp;
+    bag[kind] = (bag[kind] || 0) + 1;
+  }
+
+  function revertRecord() {
+    if (!lastRecord) return;
+    var bag = mode === "pve" ? stats.pve : stats.pvp;
+    bag[lastRecord] = Math.max(0, (bag[lastRecord] || 0) - 1);
+    lastRecord = null;
+  }
+
+  function setWin(cells) {
+    winKeys = {};
+    for (var i = 0; i < cells.length; i++) winKeys[cells[i][0] + "," + cells[i][1]] = 1;
+  }
+
+  function showOverlay(eye, title, detail) {
+    document.getElementById("overEyebrow").textContent = eye;
+    document.getElementById("overTitle").textContent = title;
+    document.getElementById("overDetail").textContent = detail;
+    overlay.hidden = false;
+  }
+
+  function finishGame(colorOrZero) {
+    phase = "over";
+    pauseClock();
+    resultColor = colorOrZero;
+    var detail = "共 " + history.length + " 手 · 用时 " + fmt(clockSec());
+    if (!colorOrZero) {
+      pushRecord("draw");
+      showOverlay("和棋", "棋盘已满", detail);
+      playDraw();
+    } else if (mode === "pve" && colorOrZero === humanColor) {
+      pushRecord("win");
+      showOverlay("恭喜", "你赢了", detail);
+      playWin();
+    } else if (mode === "pve") {
+      pushRecord("lose");
+      showOverlay("本局结束", "电脑获胜", detail);
+      playWin();
+    } else {
+      pushRecord(colorOrZero === BLACK ? "black" : "white");
+      showOverlay("五连", (colorOrZero === BLACK ? "黑方" : "白方") + "获胜", detail);
+      playWin();
+    }
+    updateHUD();
+    requestDraw();
+  }
+
+  function commit(x, y) {
+    var color = currentColor();
+    if (board[y][x] !== EMPTY) return false;
+    board[y][x] = color;
+    history.push({ x: x, y: y, color: color });
+    if (history.length === 1) startClock();
+    anim = reduceMotion ? null : { x: x, y: y, t0: performance.now() };
+    playPlace();
+    var line = window.findWinLine(board, x, y);
+    if (line) {
+      setWin(line);
+      finishGame(color);
+      return true;
+    }
+    if (window.isFull(board)) {
+      winKeys = {};
+      finishGame(0);
+      return true;
+    }
+    phase = "play";
+    updateHUD();
+    requestDraw();
+    if (mode === "pve" && color === humanColor) scheduleAI();
+    return true;
+  }
+
+  function tryPlace(x, y) {
+    if (phase !== "play") return;
+    if (mode === "pve" && currentColor() !== humanColor) return;
+    if (!board[y] || board[y][x] !== EMPTY) return;
+    clearHint();
+    commit(x, y);
+  }
+
+  function stopWorker() {
+    if (watchdog) { clearTimeout(watchdog); watchdog = 0; }
+    pendingHint = null;
+    if (worker) { worker.terminate(); worker = null; }
+  }
+
+  function ensureWorker() {
+    if (worker) return worker;
+    var code = installGomoku.toString() +
+      "\ninstallGomoku(self);\n" +
+      "self.onmessage=function(e){\n" +
+      "  var d=e.data;\n" +
+      "  try {\n" +
+      "    var move=self.chooseMove(d.board,d.color,d.level,performance.now()+(d.budget||1400));\n" +
+      "    self.postMessage({job:d.job,kind:d.kind,move:move});\n" +
+      "  } catch (err) {\n" +
+      "    self.postMessage({job:d.job,kind:d.kind,move:null,error:String(err)});\n" +
+      "  }\n" +
+      "};\n";
+    var blob = new Blob([code], { type: "application/javascript" });
+    worker = new Worker(URL.createObjectURL(blob));
+    worker.onmessage = function (e) {
+      var d = e.data || {};
+      if (d.job !== job) return;
+      if (d.kind === "hint") {
+        var fn = pendingHint;
+        pendingHint = null;
+        if (fn) fn(d.move);
+      } else applyAI(d.job, d.move);
+    };
+    worker.onerror = function () {
+      if (worker) { worker.terminate(); worker = null; }
+    };
+    return worker;
+  }
+
+  function applyAI(myJob, move) {
+    if (myJob !== job) return;
+    job++;
+    if (watchdog) { clearTimeout(watchdog); watchdog = 0; }
+    if (!move || board[move.y][move.x] !== EMPTY) {
+      phase = "play";
+      updateHUD();
+      requestDraw();
+      return;
+    }
+    commit(move.x, move.y);
+  }
+
+  function scheduleAI() {
+    if (phase === "over") return;
+    var myJob = ++job;
+    phase = "think";
+    clearHint();
+    updateHUD();
+    requestDraw();
+    var level = difficulty;
+    var color = currentColor();
+    watchdog = window.setTimeout(function () {
+      if (myJob !== job) return;
+      if (worker) { worker.terminate(); worker = null; }
+      applyAI(myJob, window.chooseMove(board, color, "medium", performance.now() + 80));
+    }, 1900);
+    window.setTimeout(function () {
+      if (myJob !== job) return;
+      if (level === "hard") {
+        try {
+          ensureWorker().postMessage({
+            job: myJob,
+            kind: "move",
+            board: copyBoard(),
+            color: color,
+            level: level,
+            budget: 1450
+          });
+        } catch (err) {
+          applyAI(myJob, window.chooseMove(board, color, "medium", performance.now() + 80));
+        }
+      } else {
+        applyAI(myJob, window.chooseMove(board, color, level, performance.now() + 40));
+      }
+    }, level === "hard" ? 40 : 280);
+  }
+
+  function clearHint() {
+    if (hintTimer) clearTimeout(hintTimer);
+    hintTimer = 0;
+    hintCell = null;
+    hintOn = false;
+  }
+
+  function flashHint(x, y) {
+    clearHint();
+    hintCell = { x: x, y: y };
+    hintOn = true;
+    if (reduceMotion) {
+      requestDraw();
+      hintTimer = window.setTimeout(function () { hintCell = null; requestDraw(); }, 1400);
+      return;
+    }
+    var left = 6;
+    var step = function () {
+      hintOn = !hintOn;
+      left--;
+      requestDraw();
+      if (left > 0) hintTimer = window.setTimeout(step, 180);
+      else { hintCell = null; hintTimer = 0; requestDraw(); }
+    };
+    requestDraw();
+    hintTimer = window.setTimeout(step, 180);
+  }
+
+  function hint() {
+    if (phase !== "play") return;
+    if (mode === "pve" && currentColor() !== humanColor) return;
+    var myJob = ++job;
+    phase = "think";
+    var color = currentColor();
+    var level = difficulty === "easy" ? "medium" : difficulty;
+    updateHUD();
+    requestDraw();
+    function finish(move) {
+      if (myJob !== job) return;
+      job++;
+      if (watchdog) { clearTimeout(watchdog); watchdog = 0; }
+      pendingHint = null;
+      phase = "play";
+      updateHUD();
+      if (move && board[move.y][move.x] === EMPTY) flashHint(move.x, move.y);
+      else requestDraw();
+    }
+    pendingHint = finish;
+    watchdog = window.setTimeout(function () {
+      if (myJob !== job) return;
+      if (worker) { worker.terminate(); worker = null; }
+      finish(window.chooseMove(board, color, "medium", performance.now() + 80));
+    }, 1900);
+    window.setTimeout(function () {
+      if (myJob !== job) return;
+      if (level === "hard") {
+        try {
+          ensureWorker().postMessage({
+            job: myJob,
+            kind: "hint",
+            board: copyBoard(),
+            color: color,
+            level: "hard",
+            budget: 1400
+          });
+        } catch (err) {
+          finish(window.chooseMove(board, color, "medium", performance.now() + 80));
+        }
+      } else finish(window.chooseMove(board, color, "medium", performance.now() + 40));
+    }, level === "hard" ? 30 : 140);
+  }
+
+  function undo() {
+    if (!history.length) return;
+    job++;
+    stopWorker();
+    clearHint();
+    if (phase === "over") revertRecord();
+    history = window.undoMoves(history, mode, humanColor);
+    board = window.boardFromHistory(history);
+    winKeys = {};
+    resultColor = 0;
+    hover = null;
+    anim = null;
+    phase = "play";
+    overlay.hidden = true;
+    if (!history.length) resetClock();
+    updateHUD();
+    requestDraw();
+    if (mode === "pve" && currentColor() !== humanColor) scheduleAI();
+  }
+
+  function newGame() {
+    job++;
+    stopWorker();
+    clearHint();
+    board = window.createBoard();
+    history = [];
+    winKeys = {};
+    hover = null;
+    anim = null;
+    resultColor = 0;
+    lastRecord = null;
+    phase = "play";
+    resetClock();
+    overlay.hidden = true;
+    updateHUD();
+    requestDraw();
+    if (mode === "pve" && humanColor === WHITE) scheduleAI();
+  }
+
+  function bindSeg(id, apply) {
+    document.getElementById(id).addEventListener("click", function (e) {
+      var btn = e.target.closest("button");
+      if (!btn || btn.disabled) return;
+      var buttons = btn.parentElement.querySelectorAll("button");
+      for (var i = 0; i < buttons.length; i++) buttons[i].classList.toggle("on", buttons[i] === btn);
+      apply(btn.getAttribute("data-value"));
+    });
+  }
+
+  /* ---------- 渲染 ---------- */
+  function makeWood(size) {
+    var c = document.createElement("canvas");
+    c.width = size;
+    c.height = size;
+    var g = c.getContext("2d");
+    var base = g.createLinearGradient(0, 0, size, size);
+    base.addColorStop(0, "#e7c98a");
+    base.addColorStop(0.45, "#d7b06a");
+    base.addColorStop(1, "#c49858");
+    g.fillStyle = base;
+    g.fillRect(0, 0, size, size);
+    var seed = 7;
+    function rnd() { seed = (seed * 16807 + 11) % 2147483647; return (seed % 10000) / 10000; }
+    g.lineWidth = Math.max(1, size / 480);
+    for (var i = 0; i < 70; i++) {
+      g.strokeStyle = "rgba(120, 72, 28, " + (0.035 + rnd() * 0.06) + ")";
+      g.beginPath();
+      var y0 = (i / 70) * size;
+      g.moveTo(0, y0);
+      for (var x = 0; x <= size; x += 12) {
+        g.lineTo(x, y0 + Math.sin(x * 0.018 + i) * (1.2 + rnd()));
+      }
+      g.stroke();
+    }
+    for (var n = 0; n < 900; n++) {
+      g.fillStyle = "rgba(90, 50, 18, " + (rnd() * 0.05) + ")";
+      g.fillRect(rnd() * size, rnd() * size, 1.2, 1.2);
+    }
+    var vig = g.createRadialGradient(size / 2, size / 2, size * 0.2, size / 2, size * 0.42, size * 0.72);
+    vig.addColorStop(0, "rgba(255, 236, 200, 0.12)");
+    vig.addColorStop(1, "rgba(90, 48, 16, 0.22)");
+    g.fillStyle = vig;
+    g.fillRect(0, 0, size, size);
+    return c;
+  }
+
+  function resize() {
+    var rect = canvas.getBoundingClientRect();
+    var css = Math.max(1, Math.floor(rect.width));
+    var dpr = Math.min(window.devicePixelRatio || 1, 2);
+    var size = Math.max(1, Math.round(css * dpr));
+    if (canvas.width !== size || canvas.height !== size) {
+      canvas.width = size;
+      canvas.height = size;
+    }
+    var pad = Math.round(size * 0.068);
+    geom = { pad: pad, cell: (size - pad * 2) / 14, size: size };
+    if (woodSize !== size) {
+      wood = makeWood(size);
+      woodSize = size;
+    }
+    draw();
+  }
+
+  function cellCenter(i) {
+    return geom.pad + i * geom.cell;
+  }
+
+  function drawStone(cx, cy, color, alpha, scale) {
+    var r = geom.cell * 0.42 * scale;
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.translate(cx, cy);
+    ctx.shadowColor = "rgba(48, 26, 8, 0.4)";
+    ctx.shadowBlur = r * 0.35;
+    ctx.shadowOffsetY = r * 0.18;
+    var g = ctx.createRadialGradient(-r * 0.38, -r * 0.42, r * 0.08, 0, 0, r);
+    if (color === BLACK) {
+      g.addColorStop(0, "#6d6d6d");
+      g.addColorStop(0.42, "#2c2c2c");
+      g.addColorStop(1, "#0b0b0b");
+    } else {
+      g.addColorStop(0, "#ffffff");
+      g.addColorStop(0.48, "#f4f1ea");
+      g.addColorStop(1, "#c8c2b6");
+    }
+    ctx.beginPath();
+    ctx.arc(0, 0, r, 0, Math.PI * 2);
+    ctx.fillStyle = g;
+    ctx.fill();
+    ctx.restore();
+    return r;
+  }
+
+  function draw() {
+    var size = geom.size;
+    ctx.clearRect(0, 0, size, size);
+    if (wood) ctx.drawImage(wood, 0, 0);
+    ctx.strokeStyle = "rgba(62, 36, 14, 0.8)";
+    ctx.lineWidth = Math.max(1, size / 520);
+    ctx.beginPath();
+    for (var i = 0; i < 15; i++) {
+      var p = cellCenter(i);
+      ctx.moveTo(cellCenter(0), p);
+      ctx.lineTo(cellCenter(14), p);
+      ctx.moveTo(p, cellCenter(0));
+      ctx.lineTo(p, cellCenter(14));
+    }
+    ctx.stroke();
+    ctx.fillStyle = "#3a2714";
+    var stars = [[3, 3], [3, 11], [11, 3], [11, 11], [7, 7]];
+    for (var s = 0; s < stars.length; s++) {
+      ctx.beginPath();
+      ctx.arc(cellCenter(stars[s][0]), cellCenter(stars[s][1]), Math.max(2.4, geom.cell * 0.115), 0, Math.PI * 2);
+      ctx.fill();
+    }
+    var last = history.length ? history[history.length - 1] : null;
+    var now = performance.now();
+    for (var y = 0; y < 15; y++) {
+      for (var x = 0; x < 15; x++) {
+        var color = board[y][x];
+        if (!color) continue;
+        var scale = 1;
+        if (anim && anim.x === x && anim.y === y) {
+          var t = Math.min(1, (now - anim.t0) / 140);
+          scale = 0.7 + 0.3 * (1 - Math.pow(1 - t, 3));
+          if (t < 1) requestDraw();
+          else anim = null;
+        }
+        var rad = drawStone(cellCenter(x), cellCenter(y), color, 1, scale);
+        if (winKeys[x + "," + y]) {
+          ctx.beginPath();
+          ctx.arc(cellCenter(x), cellCenter(y), rad + Math.max(2, geom.cell * 0.06), 0, Math.PI * 2);
+          ctx.strokeStyle = "#c4372c";
+          ctx.lineWidth = Math.max(2, geom.cell * 0.07);
+          ctx.stroke();
+        }
+        if (last && last.x === x && last.y === y) {
+          ctx.beginPath();
+          ctx.arc(cellCenter(x), cellCenter(y), Math.max(2.2, rad * 0.2), 0, Math.PI * 2);
+          ctx.fillStyle = "#c4372c";
+          ctx.fill();
+        }
+      }
+    }
+    if (hintCell && hintOn && board[hintCell.y][hintCell.x] === EMPTY) {
+      drawStone(cellCenter(hintCell.x), cellCenter(hintCell.y), currentColor(), 0.45, 1);
+      ctx.beginPath();
+      ctx.arc(cellCenter(hintCell.x), cellCenter(hintCell.y), geom.cell * 0.46, 0, Math.PI * 2);
+      ctx.strokeStyle = "#c4372c";
+      ctx.lineWidth = Math.max(2, geom.cell * 0.06);
+      ctx.stroke();
+    }
+    if (hover && phase === "play" && board[hover.y][hover.x] === EMPTY) {
+      if (!(mode === "pve" && currentColor() !== humanColor)) {
+        drawStone(cellCenter(hover.x), cellCenter(hover.y), currentColor(), 0.42, 1);
+      }
+    }
+  }
+
+  function requestDraw() {
+    if (raf) return;
+    raf = requestAnimationFrame(function () { raf = 0; draw(); });
+  }
+
+  function cellFromEvent(e) {
+    var rect = canvas.getBoundingClientRect();
+    if (!rect.width || !geom.size) return null;
+    var px = (e.clientX - rect.left) * (geom.size / rect.width);
+    var py = (e.clientY - rect.top) * (geom.size / rect.height);
+    var fx = (px - geom.pad) / geom.cell;
+    var fy = (py - geom.pad) / geom.cell;
+    if (fx < -0.65 || fy < -0.65 || fx > 14.65 || fy > 14.65) return null;
+    var x = Math.round(fx);
+    var y = Math.round(fy);
+    if (x < 0 || y < 0 || x >= 15 || y >= 15) return null;
+    return { x: x, y: y };
+  }
+
+  function previewAt(cell) {
+    hover = cell;
+    requestDraw();
+  }
+
+  canvas.addEventListener("pointerdown", function (e) {
+    if (canvas.setPointerCapture) {
+      try { canvas.setPointerCapture(e.pointerId); } catch (err) { /* 个别浏览器 */ }
+    }
+    ensureAudio();
+    previewAt(cellFromEvent(e));
+  });
+  canvas.addEventListener("pointermove", function (e) {
+    if (phase !== "play") return;
+    var cell = cellFromEvent(e);
+    if (!hover && !cell) return;
+    if (hover && cell && hover.x === cell.x && hover.y === cell.y) return;
+    previewAt(cell);
+  });
+  canvas.addEventListener("pointerleave", function () {
+    if (hover) { hover = null; requestDraw(); }
+  });
+  canvas.addEventListener("pointerup", function (e) {
+    var cell = cellFromEvent(e);
+    hover = null;
+    if (cell) tryPlace(cell.x, cell.y);
+    else requestDraw();
+  });
+  canvas.addEventListener("pointercancel", function () {
+    hover = null;
+    requestDraw();
+  });
+
+  /* ---------- 音效（Web Audio 合成，无音频文件） ---------- */
+  function ensureAudio() {
+    if (!soundOn) return null;
+    try {
+      var AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return null;
+      if (!audioCtx) audioCtx = new AC();
+      if (audioCtx.state === "suspended") audioCtx.resume();
+      return audioCtx;
+    } catch (err) {
+      return null;
+    }
+  }
+
+  function playTone(freq, dur, type, gain, delay, slide) {
+    var actx = ensureAudio();
+    if (!actx) return;
+    var t = actx.currentTime + (delay || 0);
+    var o = actx.createOscillator();
+    var g = actx.createGain();
+    o.type = type;
+    o.frequency.setValueAtTime(freq, t);
+    if (slide) o.frequency.exponentialRampToValueAtTime(Math.max(40, slide), t + dur);
+    g.gain.setValueAtTime(gain, t);
+    g.gain.exponentialRampToValueAtTime(0.0008, t + dur);
+    o.connect(g);
+    g.connect(actx.destination);
+    o.start(t);
+    o.stop(t + dur + 0.03);
+  }
+
+  function playPlace() {
+    var actx = ensureAudio();
+    if (!actx) return;
+    var len = Math.max(1, Math.floor(actx.sampleRate * 0.04));
+    var buf = actx.createBuffer(1, len, actx.sampleRate);
+    var data = buf.getChannelData(0);
+    for (var i = 0; i < len; i++) {
+      var env = 1 - i / len;
+      data[i] = (Math.random() * 2 - 1) * env * env;
+    }
+    var src = actx.createBufferSource();
+    src.buffer = buf;
+    var filter = actx.createBiquadFilter();
+    filter.type = "bandpass";
+    filter.frequency.value = 680;
+    filter.Q.value = 0.7;
+    var g = actx.createGain();
+    g.gain.value = 0.2;
+    src.connect(filter);
+    filter.connect(g);
+    g.connect(actx.destination);
+    src.start();
+    playTone(176, 0.07, "sine", 0.05, 0, 78);
+  }
+
+  function playWin() {
+    [523.25, 659.25, 783.99, 1046.5].forEach(function (f, i) {
+      playTone(f, 0.26, "sine", 0.06, i * 0.11);
+    });
+  }
+
+  function playDraw() {
+    playTone(392, 0.18, "sine", 0.045, 0);
+    playTone(330, 0.26, "sine", 0.045, 0.14);
+  }
+
+  document.getElementById("btnUndo").addEventListener("click", function () { ensureAudio(); undo(); });
+  document.getElementById("btnRestart").addEventListener("click", function () { ensureAudio(); newGame(); });
+  document.getElementById("btnHint").addEventListener("click", function () { ensureAudio(); hint(); });
+  btnSound.addEventListener("click", function () {
+    soundOn = !soundOn;
+    btnSound.textContent = soundOn ? "音效开" : "音效关";
+    btnSound.setAttribute("aria-pressed", soundOn ? "true" : "false");
+    if (soundOn) ensureAudio();
+  });
+  document.getElementById("btnReview").addEventListener("click", function () { overlay.hidden = true; });
+  document.getElementById("btnAgain").addEventListener("click", newGame);
+
+  bindSeg("modeSeg", function (value) {
+    if (value === mode) return;
+    mode = value;
+    newGame();
+  });
+  bindSeg("sideSeg", function (value) {
+    var next = Number(value);
+    if (next === humanColor) return;
+    humanColor = next;
+    newGame();
+  });
+  bindSeg("diffSeg", function (value) {
+    difficulty = value;
+    if (phase === "think") {
+      job++;
+      stopWorker();
+      phase = "play";
+      if (mode === "pve" && currentColor() !== humanColor) scheduleAI();
+      else updateHUD();
+    }
+  });
+
+  document.addEventListener("visibilitychange", function () {
+    if (document.hidden) {
+      if (clockRun) { pauseClock(); pausedByHide = true; }
+    } else if (pausedByHide && phase !== "over" && history.length) {
+      pausedByHide = false;
+      startClock();
+    } else pausedByHide = false;
+  });
+
+  requestAnimationFrame(function tick() {
+    var s = clockSec();
+    if (s !== clockShown) {
+      clockShown = s;
+      clockEl.textContent = fmt(s);
+    }
+    requestAnimationFrame(tick);
+  });
+
+  if (window.ResizeObserver) new ResizeObserver(resize).observe(canvas.parentElement);
+  else window.addEventListener("resize", resize);
+  resize();
+  updateHUD();
+
+  function cellClient(x, y) {
+    var rect = canvas.getBoundingClientRect();
+    var px = cellCenter(x) * (rect.width / geom.size);
+    var py = cellCenter(y) * (rect.height / geom.size);
+    return { x: rect.left + px, y: rect.top + py };
+  }
+
+  window.__gomoku = {
+    place: function (x, y) { tryPlace(x, y); return snapshot(); },
+    undo: function () { undo(); return snapshot(); },
+    hint: hint,
+    newGame: newGame,
+    cellClient: cellClient,
+    selfTest: window.selfTest,
+    snapshot: snapshot
+  };
+
+  function snapshot() {
+    return {
+      phase: phase,
+      turn: currentColor(),
+      moves: history.length,
+      last: history.length ? { x: history[history.length - 1].x, y: history[history.length - 1].y, color: history[history.length - 1].color } : null,
+      winner: resultColor,
+      win: Object.keys(winKeys),
+      board: copyBoard(),
+      human: humanColor,
+      mode: mode,
+      difficulty: difficulty
+    };
+  }
+})();
+</script>
+</body>
+</html>
